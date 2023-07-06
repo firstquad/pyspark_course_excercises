@@ -5,10 +5,13 @@ from soda.scan import Scan
 
 @pytest.fixture(scope='session')
 def spark():
-    return SparkSession.builder \
-      .master("local") \
-      .appName("chispa") \
-      .getOrCreate()
+    return (
+        SparkSession
+        .builder
+        .master("local")
+        .appName("chispa")
+        .getOrCreate()
+    )
 
 
 def build_scan(name, spark_session):
@@ -21,11 +24,27 @@ def build_scan(name, spark_session):
 
 
 def test_videos_source(spark):
-    videos_df = spark.read.option('header', 'true').option("inferSchema", "true").csv('datasets/USvideos.csv')
+    videos_df = spark.read.option('header', 'true')\
+        .option("inferSchema", "true")\
+        .csv('datasets/USvideos.csv')
+
     videos_df.createOrReplaceTempView('videos')
 
     scan = build_scan("videos_source_data_quality_test", spark)
     scan.add_sodacl_yaml_file("data_quality/videos_checks.yml")
+
+    scan.execute()
+    scan.assert_no_checks_warn_or_fail()
+
+
+def test_comments_parser(spark):
+    comments = spark.read.option('header', 'true')\
+        .option("inferSchema", "true")\
+        .csv('datasets/UScomments.csv')
+
+    comments.createOrReplaceTempView('comments')
+    scan = build_scan("test_comments_parser", spark)
+    scan.add_sodacl_yaml_file("data_quality/comments_parser_checks.yml")
 
     scan.execute()
 
